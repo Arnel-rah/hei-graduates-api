@@ -1,35 +1,32 @@
 openapi: 3.0.3
-
 info:
   title: HEI Graduates API
   version: 1.0.0
   description: API for managing HEI Graduates
-
 servers:
-  - url: /
-
+  - url: http://localhost:8080/
+    description: Local development server
+  - url: https://i7qraij2dkgzjk7t3jdou2dg2y0mfuzd.lambda-url.eu-west-3.on.aws/
+    description: Pre-production server
 tags:
   - name: Auth
   - name: Promotions
   - name: Groups
   - name: Students
-  - name: Teachers
   - name: Courses
   - name: CourseAssignments
   - name: Exams
   - name: Grades
   - name: Transcripts
-
 security:
   - bearerAuth: []
-
 paths:
   /login:
     post:
-      tags: [ Auth ]
+      tags: [Auth]
       operationId: login
-      summary: Authenticates a user (student, teacher, or admin) and returns a JWT.
-      security: [ ]
+      summary: Authenticates a user and returns a JWT.
+      security: []
       requestBody:
         required: true
         content:
@@ -46,15 +43,34 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Creates an account.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthToken"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
   /promotions:
     get:
-      tags: [ Promotions ]
+      tags: [Promotions]
       operationId: getPromotions
       summary: Lists all promotions.
-      x-poja-roles: [ ADMIN, TEACHER, STUDENT ]
-      parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
+      x-poja-roles: [ADMIN, TEACHER, STUDENT]
       responses:
         "200":
           description: List of promotions.
@@ -67,44 +83,22 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /promotions/{promotionId}:
-    parameters:
-      - $ref: "#/components/parameters/PromotionId"
-    get:
-      tags: [Promotions]
-      operationId: getPromotionById
-      summary: Retrieves a promotion by id.
-      x-poja-roles: [ADMIN, TEACHER, STUDENT]
-      responses:
-        "200":
-          description: The promotion.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Promotion"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
   /promotions/{promotionId}/graduates:
     parameters:
       - $ref: "#/components/parameters/PromotionId"
     get:
       tags: [Promotions]
       operationId: getPromotionGraduates
-      summary: |
-        Lists the graduates of a promotion (students with an overall
-        average >= 10 across all subjects), sorted by rank.
-      description: Restricted to admin, who is the only one allowed to see results across the 3 years.
+      summary: Lists graduates of a promotion sorted by rank.
       x-poja-roles: [ADMIN]
       parameters:
         - name: track
           in: query
-          description: Optional filter by track.
           schema:
             $ref: "#/components/schemas/Track"
       responses:
         "200":
-          description: List of graduates, sorted by rank.
+          description: List of graduates.
           content:
             application/json:
               schema:
@@ -120,10 +114,7 @@ paths:
     get:
       tags: [Promotions]
       operationId: exportPromotionGraduates
-      summary: |
-        Generates (or regenerates) the Excel file of a promotion's graduate
-        list, uploads it to S3, then redirects to a pre-signed S3 URL for
-        direct download.
+      summary: Generates Excel file and redirects to S3.
       x-poja-roles: [ADMIN]
       parameters:
         - name: track
@@ -132,7 +123,7 @@ paths:
             $ref: "#/components/schemas/Track"
       responses:
         "302":
-          description: Redirect to the pre-signed S3 URL of the xlsx file.
+          description: Redirect to pre-signed S3 URL.
           headers:
             Location:
               schema:
@@ -142,32 +133,10 @@ paths:
           $ref: "#/components/responses/NotFound"
 
   /groups:
-    get:
-      tags: [Groups]
-      operationId: getGroups
-      summary: Lists groups.
-      x-poja-roles: [ADMIN, TEACHER]
-      parameters:
-        - name: promotionId
-          in: query
-          schema:
-            type: string
-            format: uuid
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-      responses:
-        "200":
-          description: List of groups.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Group"
     post:
       tags: [Groups]
       operationId: createGroup
-      summary: Creates a new group.
+      summary: Creates a group within a promotion (e.g. TN, EL).
       x-poja-roles: [ADMIN]
       requestBody:
         required: true
@@ -183,56 +152,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
 
-  /groups/{groupId}/students:
-    parameters:
-      - name: groupId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-    get:
-      tags: [Groups]
-      operationId: getGroupStudents
-      summary: Lists the students currently in this group.
-      x-poja-roles: [ADMIN, TEACHER]
-      responses:
-        "200":
-          description: Students of the group.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Student"
-
   /students:
-    get:
-      tags: [Students]
-      operationId: getStudents
-      summary: Lists students.
-      x-poja-roles: [ADMIN, TEACHER]
-      parameters:
-        - name: groupId
-          in: query
-          schema:
-            type: string
-            format: uuid
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-      responses:
-        "200":
-          description: List of students.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Student"
     post:
       tags: [Students]
       operationId: createStudent
-      summary: Creates a student.
+      summary: Creates a student (and its underlying account).
       x-poja-roles: [ADMIN]
       requestBody:
         required: true
@@ -254,10 +178,8 @@ paths:
     get:
       tags: [Students]
       operationId: getStudentById
-      summary: |
-        Retrieves a student. A student can only view THEIR OWN record
-        (checked on the service side from the token); admin and teachers
-        can view any record.
+      summary: Retrieves a student. Students can only view their own record; admins and teachers can view any record.
+
       x-poja-roles: [ADMIN, TEACHER, STUDENT]
       responses:
         "200":
@@ -270,24 +192,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-    put:
-      tags: [Students]
-      operationId: updateStudent
-      summary: Updates a student.
-      x-poja-roles: [ADMIN]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/StudentSave"
-      responses:
-        "200":
-          description: Student updated.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Student"
 
   /students/{studentId}/grades:
     parameters:
@@ -295,9 +199,7 @@ paths:
     get:
       tags: [Students]
       operationId: getStudentGrades
-      summary: |
-        A student's grades. A student can only see THEIR OWN grades,
-        a teacher sees grades for their own courses, admin sees everything.
+      summary: Student sees own grades; teacher sees course grades; admin sees all.
       x-poja-roles: [ADMIN, TEACHER, STUDENT]
       parameters:
         - name: semesterId
@@ -323,10 +225,7 @@ paths:
     post:
       tags: [Transcripts]
       operationId: sendStudentTranscriptByEmail
-      summary: |
-        Triggers the asynchronous generation of the student's PDF transcript,
-        uploads it to S3, then sends an email with an S3
-        download link to the student's address.
+      summary: Generates PDF transcript and sends email with S3 link.
       x-poja-roles: [ADMIN, STUDENT]
       responses:
         "202":
@@ -338,89 +237,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /teachers:
-    get:
-      tags: [Teachers]
-      operationId: getTeachers
-      summary: Lists teachers.
-      x-poja-roles: [ADMIN]
-      parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-      responses:
-        "200":
-          description: List of teachers.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Teacher"
-    post:
-      tags: [Teachers]
-      operationId: createTeacher
-      summary: Creates a teacher.
-      x-poja-roles: [ADMIN]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TeacherSave"
-      responses:
-        "201":
-          description: Teacher created.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Teacher"
-
-  /teachers/{teacherId}/course-assignments:
-    parameters:
-      - name: teacherId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-    get:
-      tags: [Teachers]
-      operationId: getTeacherCourseAssignments
-      summary: Lists the courses assigned to a teacher, across all years.
-      x-poja-roles: [ADMIN, TEACHER]
-      parameters:
-        - name: academicYear
-          in: query
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Assigned courses.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CourseAssignment"
-
   /courses:
-    get:
-      tags: [Courses]
-      operationId: getCourses
-      summary: Lists courses.
-      x-poja-roles: [ADMIN, TEACHER, STUDENT]
-      parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-      responses:
-        "200":
-          description: List of courses.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Course"
     post:
       tags: [Courses]
       operationId: createCourse
@@ -441,33 +258,10 @@ paths:
                 $ref: "#/components/schemas/Course"
 
   /course-assignments:
-    get:
-      tags: [CourseAssignments]
-      operationId: getCourseAssignments
-      summary: Lists course/teacher/group assignments.
-      x-poja-roles: [ADMIN, TEACHER]
-      parameters:
-        - name: academicYear
-          in: query
-          schema:
-            type: integer
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-      responses:
-        "200":
-          description: List of assignments.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CourseAssignment"
     post:
       tags: [CourseAssignments]
       operationId: createCourseAssignment
-      summary: |
-        Assigns a course to a teacher for a given year, for one or more
-        specific groups.
+      summary: Assigns a course to a teacher, group, and semester.
       x-poja-roles: [ADMIN]
       requestBody:
         required: true
@@ -491,20 +285,6 @@ paths:
         schema:
           type: string
           format: uuid
-    get:
-      tags: [Exams]
-      operationId: getCourseAssignmentExams
-      summary: Lists the exams of a course assignment.
-      x-poja-roles: [ADMIN, TEACHER]
-      responses:
-        "200":
-          description: List of exams.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Exam"
     post:
       tags: [Exams]
       operationId: createExam
@@ -524,29 +304,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/Exam"
 
-  /exams/{examId}/grades:
-    parameters:
-      - name: examId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-    get:
-      tags: [Grades]
-      operationId: getExamGrades
-      summary: Lists the grades recorded for an exam.
-      x-poja-roles: [ADMIN, TEACHER]
-      responses:
-        "200":
-          description: Grades of the exam.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Grade"
-
   /exams/{examId}/grades/{studentId}:
     parameters:
       - name: examId
@@ -559,11 +316,7 @@ paths:
     put:
       tags: [Grades]
       operationId: setStudentExamGrade
-      summary: |
-        Creates or updates a student's grade for an exam. If the grade
-        already existed, the old value and the provided reason are archived
-        in GradeHistory before the new value is written: "reason" is
-        therefore required whenever this is an update.
+      summary: Creates or updates a student's exam grade.
       x-poja-roles: [ADMIN, TEACHER]
       requestBody:
         required: true
@@ -590,7 +343,7 @@ paths:
     get:
       tags: [Grades]
       operationId: getGradeHistory
-      summary: History of changes made to a grade (complaints, corrections, etc.).
+      summary: History of changes made to a grade.
       x-poja-roles: [ADMIN, TEACHER, STUDENT]
       responses:
         "200":
@@ -603,7 +356,6 @@ paths:
                   $ref: "#/components/schemas/GradeHistory"
 
 components:
-
   securitySchemes:
     bearerAuth:
       type: http
@@ -611,23 +363,6 @@ components:
       bearerFormat: JWT
 
   parameters:
-    Page:
-      name: page
-      in: query
-      description: Page number (starts at 1).
-      schema:
-        type: integer
-        minimum: 1
-        default: 1
-    PageSize:
-      name: page_size
-      in: query
-      description: Page size.
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 100
-        default: 20
     PromotionId:
       name: promotionId
       in: path
@@ -644,6 +379,12 @@ components:
         format: uuid
 
   responses:
+    BadRequest:
+      description: Bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
     NotFound:
       description: Resource not found.
       content:
@@ -657,21 +398,22 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
     Forbidden:
-      description: Authenticated, but insufficient rights for this resource.
+      description: Insufficient rights.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
 
   schemas:
-
     Role:
       type: string
       enum: [ADMIN, TEACHER, STUDENT]
+    RegisterRole:
+      type: string
+      enum: [TEACHER, STUDENT]
 
     Track:
       type: string
-      description: Academic track.
       enum: [EL, TN]
 
     Error:
@@ -693,6 +435,26 @@ components:
         password:
           type: string
           format: password
+
+    RegisterRequest:
+      type: object
+      required: [email, password, role, name, firstName]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 6
+        role:
+          $ref: "#/components/schemas/RegisterRole"
+        name:
+          type: string
+        firstName:
+          type: string
+        ref:
+          type: string
 
     AuthToken:
       type: object
@@ -722,22 +484,19 @@ components:
           format: uuid
         ref:
           type: string
+          description: 'e.g. "TN" or "EL".'
         promotionId:
           type: string
           format: uuid
-        track:
-          $ref: "#/components/schemas/Track"
     GroupSave:
       type: object
-      required: [ref, promotionId, track]
+      required: [ref, promotionId]
       properties:
         ref:
           type: string
         promotionId:
           type: string
           format: uuid
-        track:
-          $ref: "#/components/schemas/Track"
 
     Student:
       type: object
@@ -756,7 +515,7 @@ components:
           format: email
     StudentSave:
       type: object
-      required: [ref, name, firstName, email]
+      required: [ref, name, firstName, email, password, promotionId]
       properties:
         ref:
           type: string
@@ -770,28 +529,9 @@ components:
         password:
           type: string
           format: password
-          description: Provided only on creation or when changing the password.
-
-    Teacher:
-      type: object
-      properties:
-        id:
+        promotionId:
           type: string
           format: uuid
-        name:
-          type: string
-        email:
-          type: string
-          format: email
-    TeacherSave:
-      type: object
-      required: [name, email]
-      properties:
-        name:
-          type: string
-        email:
-          type: string
-          format: email
 
     Course:
       type: object
@@ -828,18 +568,15 @@ components:
         teacherId:
           type: string
           format: uuid
-        academicYear:
-          type: integer
-          description: Starting academic year.
-        concernedGroupIds:
-          type: array
-          description: Groups concerned by this assignment (not necessarily all of the promotion's groups).
-          items:
-            type: string
-            format: uuid
+        groupId:
+          type: string
+          format: uuid
+        semesterId:
+          type: string
+          format: uuid
     CourseAssignmentSave:
       type: object
-      required: [courseId, teacherId, academicYear, concernedGroupIds]
+      required: [courseId, teacherId, groupId, semesterId]
       properties:
         courseId:
           type: string
@@ -847,14 +584,12 @@ components:
         teacherId:
           type: string
           format: uuid
-        academicYear:
-          type: integer
-        concernedGroupIds:
-          type: array
-          minItems: 1
-          items:
-            type: string
-            format: uuid
+        groupId:
+          type: string
+          format: uuid
+        semesterId:
+          type: string
+          format: uuid
 
     Exam:
       type: object
@@ -894,6 +629,7 @@ components:
           format: uuid
         value:
           type: number
+
     GradeSave:
       type: object
       required: [value]
@@ -902,7 +638,7 @@ components:
           type: number
         reason:
           type: string
-          description: Required if the grade already existed and is being changed (complaint, error, etc.).
+          description: Required if the grade already existed and is being changed.
 
     GradeHistory:
       type: object
@@ -922,10 +658,12 @@ components:
         modifiedAt:
           type: string
           format: date-time
+        modifiedByEmail:
+          type: string
+          format: email
 
     Graduate:
       type: object
-      description: A row of the graduate list (also reflected in the exported xlsx file).
       properties:
         rank:
           type: integer
