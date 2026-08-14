@@ -1,0 +1,693 @@
+openapi: 3.0.3
+info:
+  title: HEI Graduates API
+  version: 1.0.0
+  description: API for managing HEI Graduates
+servers:
+  - url: http://localhost:8080/
+    description: Local development server
+  - url: https://i7qraij2dkgzjk7t3jdou2dg2y0mfuzd.lambda-url.eu-west-3.on.aws/
+    description: Pre-production server
+tags:
+  - name: Auth
+  - name: Promotions
+  - name: Groups
+  - name: Students
+  - name: Courses
+  - name: CourseAssignments
+  - name: Exams
+  - name: Grades
+  - name: Transcripts
+security:
+  - bearerAuth: []
+paths:
+  /login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Authenticates a user and returns a JWT.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+      responses:
+        "200":
+          description: Successful authentication.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthToken"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Creates an account.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthToken"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /promotions:
+    get:
+      tags: [Promotions]
+      operationId: getPromotions
+      summary: Lists all promotions.
+      x-poja-roles: [ADMIN, TEACHER, STUDENT]
+      responses:
+        "200":
+          description: List of promotions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Promotion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /promotions/{promotionId}/graduates:
+    parameters:
+      - $ref: "#/components/parameters/PromotionId"
+    get:
+      tags: [Promotions]
+      operationId: getPromotionGraduates
+      summary: Lists graduates of a promotion sorted by rank.
+      x-poja-roles: [ADMIN]
+      parameters:
+        - name: track
+          in: query
+          schema:
+            $ref: "#/components/schemas/Track"
+      responses:
+        "200":
+          description: List of graduates.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Graduate"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /promotions/{promotionId}/graduates/export:
+    parameters:
+      - $ref: "#/components/parameters/PromotionId"
+    get:
+      tags: [Promotions]
+      operationId: exportPromotionGraduates
+      summary: Generates Excel file and redirects to S3.
+      x-poja-roles: [ADMIN]
+      parameters:
+        - name: track
+          in: query
+          schema:
+            $ref: "#/components/schemas/Track"
+      responses:
+        "302":
+          description: Redirect to pre-signed S3 URL.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /groups:
+    post:
+      tags: [Groups]
+      operationId: createGroup
+      summary: Creates a group within a promotion (e.g. TN, EL).
+      x-poja-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupSave"
+      responses:
+        "201":
+          description: Group created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+
+  /students:
+    post:
+      tags: [Students]
+      operationId: createStudent
+      summary: Creates a student (and its underlying account).
+      x-poja-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentSave"
+      responses:
+        "201":
+          description: Student created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+
+  /students/{studentId}:
+    parameters:
+      - $ref: "#/components/parameters/StudentId"
+    get:
+      tags: [Students]
+      operationId: getStudentById
+      summary: Retrieves a student. Students can only view their own record; admins and teachers can view any record.
+
+      x-poja-roles: [ADMIN, TEACHER, STUDENT]
+      responses:
+        "200":
+          description: The student.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /students/{studentId}/grades:
+    parameters:
+      - $ref: "#/components/parameters/StudentId"
+    get:
+      tags: [Students]
+      operationId: getStudentGrades
+      summary: Student sees own grades; teacher sees course grades; admin sees all.
+      x-poja-roles: [ADMIN, TEACHER, STUDENT]
+      parameters:
+        - name: semesterId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Grades of the student.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Grade"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /students/{studentId}/transcript-emails:
+    parameters:
+      - $ref: "#/components/parameters/StudentId"
+    post:
+      tags: [Transcripts]
+      operationId: sendStudentTranscriptByEmail
+      summary: Generates PDF transcript and sends email with S3 link.
+      x-poja-roles: [ADMIN, STUDENT]
+      responses:
+        "202":
+          description: Request accepted, processing is asynchronous.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptEmailRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses:
+    post:
+      tags: [Courses]
+      operationId: createCourse
+      summary: Creates a course.
+      x-poja-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseSave"
+      responses:
+        "201":
+          description: Course created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+
+  /course-assignments:
+    post:
+      tags: [CourseAssignments]
+      operationId: createCourseAssignment
+      summary: Assigns a course to a teacher, group, and semester.
+      x-poja-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseAssignmentSave"
+      responses:
+        "201":
+          description: Assignment created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseAssignment"
+
+  /course-assignments/{courseAssignmentId}/exams:
+    parameters:
+      - name: courseAssignmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Exams]
+      operationId: createExam
+      summary: Creates an exam for this course assignment.
+      x-poja-roles: [ADMIN, TEACHER]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExamSave"
+      responses:
+        "201":
+          description: Exam created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exam"
+
+  /exams/{examId}/grades/{studentId}:
+    parameters:
+      - name: examId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: "#/components/parameters/StudentId"
+    put:
+      tags: [Grades]
+      operationId: setStudentExamGrade
+      summary: Creates or updates a student's exam grade.
+      x-poja-roles: [ADMIN, TEACHER]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GradeSave"
+      responses:
+        "200":
+          description: Grade recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Grade"
+
+  /grades/{gradeId}/history:
+    parameters:
+      - name: gradeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Grades]
+      operationId: getGradeHistory
+      summary: History of changes made to a grade.
+      x-poja-roles: [ADMIN, TEACHER, STUDENT]
+      responses:
+        "200":
+          description: Grade history, oldest to most recent.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GradeHistory"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PromotionId:
+      name: promotionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    StudentId:
+      name: studentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing or invalid authentication.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Insufficient rights.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Role:
+      type: string
+      enum: [ADMIN, TEACHER, STUDENT]
+    RegisterRole:
+      type: string
+      enum: [TEACHER, STUDENT]
+
+    Track:
+      type: string
+      enum: [EL, TN]
+
+    Error:
+      type: object
+      required: [type, message]
+      properties:
+        type:
+          type: string
+        message:
+          type: string
+
+    Credentials:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    RegisterRequest:
+      type: object
+      required: [email, password, role, name, firstName]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 6
+        role:
+          $ref: "#/components/schemas/RegisterRole"
+        name:
+          type: string
+        firstName:
+          type: string
+        ref:
+          type: string
+
+    AuthToken:
+      type: object
+      properties:
+        token:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+
+    Promotion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        startYear:
+          type: string
+          format: date-time
+
+    Group:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ref:
+          type: string
+          description: 'e.g. "TN" or "EL".'
+        promotionId:
+          type: string
+          format: uuid
+    GroupSave:
+      type: object
+      required: [ref, promotionId]
+      properties:
+        ref:
+          type: string
+        promotionId:
+          type: string
+          format: uuid
+
+    Student:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ref:
+          type: string
+        name:
+          type: string
+        firstName:
+          type: string
+        email:
+          type: string
+          format: email
+    StudentSave:
+      type: object
+      required: [ref, name, firstName, email, password, promotionId]
+      properties:
+        ref:
+          type: string
+        name:
+          type: string
+        firstName:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        promotionId:
+          type: string
+          format: uuid
+
+    Course:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ref:
+          type: string
+        title:
+          type: string
+        credits:
+          type: integer
+    CourseSave:
+      type: object
+      required: [ref, title, credits]
+      properties:
+        ref:
+          type: string
+        title:
+          type: string
+        credits:
+          type: integer
+
+    CourseAssignment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        courseId:
+          type: string
+          format: uuid
+        teacherId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        semesterId:
+          type: string
+          format: uuid
+    CourseAssignmentSave:
+      type: object
+      required: [courseId, teacherId, groupId, semesterId]
+      properties:
+        courseId:
+          type: string
+          format: uuid
+        teacherId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        semesterId:
+          type: string
+          format: uuid
+
+    Exam:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        courseAssignmentId:
+          type: string
+          format: uuid
+        dateExam:
+          type: string
+          format: date-time
+        coefficient:
+          type: number
+    ExamSave:
+      type: object
+      required: [dateExam, coefficient]
+      properties:
+        dateExam:
+          type: string
+          format: date-time
+        coefficient:
+          type: number
+
+    Grade:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+          format: uuid
+        value:
+          type: number
+
+    GradeSave:
+      type: object
+      required: [value]
+      properties:
+        value:
+          type: number
+        reason:
+          type: string
+          description: Required if the grade already existed and is being changed.
+
+    GradeHistory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        gradeId:
+          type: string
+          format: uuid
+        oldValue:
+          type: number
+        newValue:
+          type: number
+        reason:
+          type: string
+        modifiedAt:
+          type: string
+          format: date-time
+        modifiedByEmail:
+          type: string
+          format: email
+
+    Graduate:
+      type: object
+      properties:
+        rank:
+          type: integer
+        studentId:
+          type: string
+          format: uuid
+        studentRef:
+          type: string
+        name:
+          type: string
+        firstName:
+          type: string
+        average:
+          type: number
+
+    TranscriptEmailRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, SENT, FAILED]
