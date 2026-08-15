@@ -3,15 +3,15 @@ package com.example.demo.entity;
 import com.example.demo.model.Role;
 import jakarta.persistence.*;
 import java.util.UUID;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Table(name = "account")
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class JAccount {
   @GeneratedValue(strategy = GenerationType.UUID)
   @Id
