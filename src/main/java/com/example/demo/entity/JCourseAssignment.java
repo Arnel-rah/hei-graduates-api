@@ -2,15 +2,15 @@ package com.example.demo.entity;
 
 import jakarta.persistence.*;
 import java.util.UUID;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Table(name = "course_assignment")
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class JCourseAssignment {
 
   @Id
