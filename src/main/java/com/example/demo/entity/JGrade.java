@@ -12,6 +12,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Generated
 public class JGrade {
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
