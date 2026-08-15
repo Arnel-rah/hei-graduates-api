@@ -12,6 +12,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Generated
 public class JAccount {
   @GeneratedValue(strategy = GenerationType.UUID)
   @Id
