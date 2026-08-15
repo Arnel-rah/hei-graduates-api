@@ -1,0 +1,80 @@
+package com.example.demo.controller;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import com.example.demo.conf.FacadeIT;
+import com.example.demo.model.AuthToken;
+import com.example.demo.model.LoginRequest;
+import com.example.demo.model.RegisterRequest;
+import com.example.demo.model.Role;
+import com.example.demo.repository.AccountRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+
+@Transactional
+class AuthControllerIT extends FacadeIT {
+
+  @Autowired private TestRestTemplate restTemplate;
+
+  @Autowired private AccountRepository accountRepository;
+
+  @Test
+  void register_thenLogin_fullFlow_succeeds() {
+    RegisterRequest registerRequest =
+        new RegisterRequest("nel@hei.mg", "password123", Role.STUDENT, "Rahaingo", "Nel", "STU001");
+
+    ResponseEntity<AuthToken> registerResponse =
+        restTemplate.postForEntity("/register", registerRequest, AuthToken.class);
+
+    assertEquals(HttpStatus.CREATED, registerResponse.getStatusCode());
+    assertNotNull(registerResponse.getBody());
+    assertNotNull(registerResponse.getBody().token());
+    assertEquals(Role.STUDENT, registerResponse.getBody().role());
+
+    LoginRequest loginRequest = new LoginRequest("nel@hei.mg", "password123");
+
+    ResponseEntity<AuthToken> loginResponse =
+        restTemplate.postForEntity("/login", loginRequest, AuthToken.class);
+
+    assertEquals(HttpStatus.OK, loginResponse.getStatusCode());
+    assertNotNull(loginResponse.getBody());
+    assertNotNull(loginResponse.getBody().token());
+  }
+
+  @Test
+  void register_withAdminRole_isRejected() {
+    RegisterRequest request =
+        new RegisterRequest("admin@hei.mg", "password123", Role.ADMIN, "Admin", "Root", null);
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity("/register", request, String.class);
+
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+  }
+
+  @Test
+  void login_withWrongPassword_returnsUnauthorized() {
+    RegisterRequest registerRequest =
+        new RegisterRequest(
+            "rasoa.controller@hei.mg", "password123", Role.TEACHER, "Rasoa", "Jean", null);
+    restTemplate.postForEntity("/register", registerRequest, AuthToken.class);
+
+    LoginRequest loginRequest = new LoginRequest("rasoa.controller@hei.mg", "wrongpassword");
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity("/login", loginRequest, String.class);
+
+    assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+  }
+
+  @Test
+  void protectedEndpoint_withoutToken_returnsUnauthorized() {
+    ResponseEntity<String> response = restTemplate.getForEntity("/promotions", String.class);
+
+    assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+  }
+}
