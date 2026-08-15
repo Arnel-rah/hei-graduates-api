@@ -23,3 +23,6 @@ aws:
     bus: default
   s3:
     bucket: default-bucket
+jwt:
+  secret: ${JWT_SECRET:7f8e9a2b4c6d8f0e1a3b5c7d9e0f2a4b6c8e0a2b4c6d8f0e1a3b5c7d9e0f2a4b}
+  expiration-days: ${JWT_EXPIRATION_DAYS:7}
