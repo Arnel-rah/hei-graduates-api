@@ -6,6 +6,7 @@ import com.example.demo.conf.FacadeIT;
 import com.example.demo.model.AuthToken;
 import com.example.demo.model.Role;
 import com.example.demo.repository.AccountRepository;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -20,14 +21,19 @@ class AuthServiceIT extends FacadeIT {
 
   @Autowired private AccountRepository accountRepository;
 
+  private String uniqueEmail(String prefix) {
+    return prefix + "-" + UUID.randomUUID() + "@hei.mg";
+  }
+
   @Test
   void register_thenLogin_succeeds() {
-    AuthToken registerToken = authService.register("nel@hei.mg", "password123", Role.STUDENT);
+    String email = uniqueEmail("nel");
+    AuthToken registerToken = authService.register(email, "password123", Role.STUDENT);
 
     assertNotNull(registerToken.token());
     assertEquals(Role.STUDENT, registerToken.role());
 
-    AuthToken loginToken = authService.login("nel@hei.mg", "password123");
+    AuthToken loginToken = authService.login(email, "password123");
 
     assertNotNull(loginToken.token());
     assertEquals(Role.STUDENT, loginToken.role());
@@ -37,29 +43,31 @@ class AuthServiceIT extends FacadeIT {
   void register_withAdminRole_throwsException() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> authService.register("admin@hei.mg", "password123", Role.ADMIN));
+        () -> authService.register(uniqueEmail("admin"), "password123", Role.ADMIN));
   }
 
   @Test
   void register_withExistingEmail_throwsException() {
-    authService.register("ny@hei.mg", "password123", Role.STUDENT);
+    String email = uniqueEmail("ny");
+    authService.register(email, "password123", Role.STUDENT);
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> authService.register("ny@hei.mg", "otherpassword", Role.TEACHER));
+        () -> authService.register(email, "otherpassword", Role.TEACHER));
   }
 
   @Test
   void login_withWrongPassword_throwsException() {
-    authService.register("rakoto@hei.mg", "password123", Role.TEACHER);
+    String email = uniqueEmail("rakoto");
+    authService.register(email, "password123", Role.TEACHER);
 
-    assertThrows(
-        BadCredentialsException.class, () -> authService.login("rakoto@hei.mg", "wrongpassword"));
+    assertThrows(BadCredentialsException.class, () -> authService.login(email, "wrongpassword"));
   }
 
   @Test
   void login_withUnknownEmail_throwsException() {
     assertThrows(
-        BadCredentialsException.class, () -> authService.login("unknown@hei.mg", "password123"));
+        BadCredentialsException.class,
+        () -> authService.login(uniqueEmail("unknown"), "password123"));
   }
 }

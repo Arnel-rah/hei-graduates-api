@@ -8,6 +8,7 @@ import com.example.demo.model.LoginRequest;
 import com.example.demo.model.RegisterRequest;
 import com.example.demo.model.Role;
 import com.example.demo.repository.AccountRepository;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -24,10 +25,15 @@ class AuthControllerIT extends FacadeIT {
 
   @Autowired private AccountRepository accountRepository;
 
+  private String uniqueEmail(String prefix) {
+    return prefix + "-" + UUID.randomUUID() + "@hei.mg";
+  }
+
   @Test
   void register_thenLogin_fullFlow_succeeds() {
+    String email = uniqueEmail("nel");
     RegisterRequest registerRequest =
-        new RegisterRequest("nel@hei.mg", "password123", Role.STUDENT, "Rahaingo", "Nel", "STU001");
+        new RegisterRequest(email, "password123", Role.STUDENT, "Rahaingo", "Nel", "STU001");
 
     ResponseEntity<AuthToken> registerResponse =
         restTemplate.postForEntity("/register", registerRequest, AuthToken.class);
@@ -37,7 +43,7 @@ class AuthControllerIT extends FacadeIT {
     assertNotNull(registerResponse.getBody().token());
     assertEquals(Role.STUDENT, registerResponse.getBody().role());
 
-    LoginRequest loginRequest = new LoginRequest("nel@hei.mg", "password123");
+    LoginRequest loginRequest = new LoginRequest(email, "password123");
 
     ResponseEntity<AuthToken> loginResponse =
         restTemplate.postForEntity("/login", loginRequest, AuthToken.class);
@@ -50,7 +56,7 @@ class AuthControllerIT extends FacadeIT {
   @Test
   void register_withAdminRole_isRejected() {
     RegisterRequest request =
-        new RegisterRequest("admin@hei.mg", "password123", Role.ADMIN, "Admin", "Root", null);
+        new RegisterRequest(uniqueEmail("admin"), "password123", Role.ADMIN, "Admin", "Root", null);
 
     ResponseEntity<String> response =
         restTemplate.postForEntity("/register", request, String.class);
@@ -60,12 +66,12 @@ class AuthControllerIT extends FacadeIT {
 
   @Test
   void login_withWrongPassword_returnsUnauthorized() {
+    String email = uniqueEmail("rasoa.controller");
     RegisterRequest registerRequest =
-        new RegisterRequest(
-            "rasoa.controller@hei.mg", "password123", Role.TEACHER, "Rasoa", "Jean", null);
+        new RegisterRequest(email, "password123", Role.TEACHER, "Rasoa", "Jean", null);
     restTemplate.postForEntity("/register", registerRequest, AuthToken.class);
 
-    LoginRequest loginRequest = new LoginRequest("rasoa.controller@hei.mg", "wrongpassword");
+    LoginRequest loginRequest = new LoginRequest(email, "wrongpassword");
 
     ResponseEntity<String> response =
         restTemplate.postForEntity("/login", loginRequest, String.class);
