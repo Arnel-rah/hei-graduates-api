@@ -9,9 +9,11 @@ import com.example.demo.repository.AccountRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 @Transactional
+@ActiveProfiles("test")
 class AuthServiceIT extends FacadeIT {
 
   @Autowired private AuthService authService;
