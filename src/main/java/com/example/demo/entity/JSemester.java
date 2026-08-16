@@ -19,6 +19,8 @@ public class JSemester {
   private String id;
 
   private String label;
+
+  @Column(name = "\"order\"")
   private int order;
 
   @ManyToOne
