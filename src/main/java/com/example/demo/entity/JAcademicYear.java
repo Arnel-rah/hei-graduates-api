@@ -2,32 +2,36 @@ package com.example.demo.entity;
 
 import jakarta.persistence.*;
 import java.util.UUID;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Generated;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "semester")
+@Table(name = "academic_year")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @Generated
-public class JSemester {
+public class JAcademicYear {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.UUID)
+  @Column(length = 36)
   private String id;
 
   private String label;
+
   private int order;
 
   @ManyToOne
   @JoinColumn(name = "promotion_id", nullable = false)
   private JPromotion promotion;
 
-  @ManyToOne
-  @JoinColumn(name = "academic_year_id")
-  private JAcademicYear academicYear;
+  private boolean published;
 
   @PrePersist
   public void generateId() {

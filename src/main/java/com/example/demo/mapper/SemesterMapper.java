@@ -10,6 +10,7 @@ public class SemesterMapper {
         semester.getId(),
         semester.getLabel(),
         semester.getOrder(),
-        semester.getPromotion() != null ? semester.getPromotion().getId() : null);
+        semester.getPromotion() != null ? semester.getPromotion().getId() : null,
+        semester.getAcademicYear() != null ? semester.getAcademicYear().getId() : null);
   }
 }

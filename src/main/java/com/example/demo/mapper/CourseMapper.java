@@ -7,6 +7,10 @@ public class CourseMapper {
 
   public static CourseRecord toRecord(JCourse course) {
     return new CourseRecord(
-        course.getId(), course.getRef(), course.getTitle(), course.getCredits());
+        course.getId(),
+        course.getRef(),
+        course.getTitle(),
+        course.getCredits(),
+        course.isMandatory());
   }
 }
