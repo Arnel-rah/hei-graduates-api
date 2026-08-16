@@ -25,6 +25,7 @@ public class JAcademicYear {
 
   private String label;
 
+  @Column(name = "\"order\"")
   private int order;
 
   @ManyToOne
