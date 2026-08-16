@@ -21,6 +21,7 @@ public class JCourse {
   private String ref;
   private String title;
   private int credits;
+  private boolean mandatory;
 
   @PrePersist
   public void generateId() {
