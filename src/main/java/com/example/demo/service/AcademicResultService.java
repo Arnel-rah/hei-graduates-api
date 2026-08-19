@@ -165,13 +165,13 @@ public class AcademicResultService {
 
       boolean anyIncomplete = courseResults.stream().anyMatch(r -> !r.allExamsGraded());
       if (anyIncomplete) {
-        continue;
+        continue; // dossier pas complet, pas eligible
       }
 
       boolean failedMandatoryCourse =
           courseResults.stream().anyMatch(r -> r.course().isMandatory() && !r.isValidated());
       if (failedMandatoryCourse) {
-        continue;
+        continue; // regle metier : 10/20 minimum sur les matieres obligatoires
       }
 
       TranscriptRecord transcript = computeTranscript(student.getId());
@@ -215,5 +215,39 @@ public class AcademicResultService {
     }
 
     return history.get(0).getGroup().getRef();
+  }
+
+  public List<com.example.demo.model.PromotionStudentView> listPromotionStudentsWithStatus(
+      String promotionId) {
+    List<JStudent> students = studentRepository.findByPromotionId(promotionId);
+
+    List<com.example.demo.model.PromotionStudentView> views = new ArrayList<>();
+
+    for (JStudent student : students) {
+      List<CourseResult> courseResults = computeCourseResults(student.getId());
+      TranscriptRecord transcript = computeTranscript(student.getId());
+
+      boolean anyIncomplete = courseResults.stream().anyMatch(r -> !r.allExamsGraded());
+      boolean failedMandatory =
+          courseResults.stream().anyMatch(r -> r.course().isMandatory() && !r.isValidated());
+      boolean graduated = !anyIncomplete && !failedMandatory;
+
+      String diplomaType = resolveDiplomaType(student.getId());
+
+      views.add(
+          new com.example.demo.model.PromotionStudentView(
+              student.getId(),
+              student.getRef(),
+              student.getName(),
+              student.getFirstName(),
+              transcript.generalAverage(),
+              graduated,
+              diplomaType));
+    }
+
+    views.sort(
+        Comparator.comparing(com.example.demo.model.PromotionStudentView::average).reversed());
+
+    return views;
   }
 }

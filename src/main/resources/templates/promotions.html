@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Promotions - HEI</title>
+</head>
+<body>
+<h1>Liste des promotions</h1>
+
+<table border="1" cellpadding="5">
+    <tr>
+        <th>Label</th>
+        <th>Annee de debut</th>
+        <th>Action</th>
+    </tr>
+    <tr th:each="promotion : ${promotions}">
+        <td th:text="${promotion.label}">Label</td>
+        <td th:text="${promotion.startYear}">Annee</td>
+        <td>
+            <a th:href="@{/web/promotions/{id}/students(id=${promotion.id})}">
+                Voir les etudiants
+            </a>
+        </td>
+    </tr>
+</table>
+
+<p th:if="${#lists.isEmpty(promotions)}">Aucune promotion pour le moment.</p>
+
+</body>
+</html>
