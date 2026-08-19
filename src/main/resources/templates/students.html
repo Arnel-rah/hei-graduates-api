@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Etudiants - HEI</title>
+</head>
+<body>
+<h1>Etudiants de la promotion</h1>
+
+<p>
+    <a th:href="@{/web/promotions/{id}/graduates/export(id=${promotionId})}">
+        Telecharger la liste des diplomes (XLSX)
+    </a>
+</p>
+
+<p><a th:href="@{/web/promotions}">&larr; Retour aux promotions</a></p>
+
+<table border="1" cellpadding="5">
+    <tr>
+        <th>Reference</th>
+        <th>Nom</th>
+        <th>Prenom</th>
+        <th>Moyenne generale</th>
+        <th>Diplome ?</th>
+        <th>Type</th>
+    </tr>
+    <tr th:each="student : ${students}">
+        <td th:text="${student.ref}">Ref</td>
+        <td th:text="${student.name}">Nom</td>
+        <td th:text="${student.firstName}">Prenom</td>
+        <td th:text="${student.average}">0</td>
+        <td th:text="${student.graduated} ? 'Oui' : 'Non'">Non</td>
+        <td th:text="${student.diplomaType}">-</td>
+    </tr>
+</table>
+
+<p th:if="${#lists.isEmpty(students)}">Aucun etudiant dans cette promotion.</p>
+
+</body>
+</html>
