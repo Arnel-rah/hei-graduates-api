@@ -22,6 +22,7 @@ tags:
   - name: Exams
   - name: Grades
   - name: Transcripts
+  - name: Web
 
 security:
   - bearerAuth: []
@@ -512,6 +513,77 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/GradeHistory"
+  /web/promotions:
+    get:
+      tags:
+        - Web
+      operationId: webListPromotions
+      summary: "Displays the promotions page (web interface)."
+      x-poja-roles:
+        - ADMIN
+        - TEACHER
+        - STUDENT
+      responses:
+        "200":
+          description: Promotions HTML page.
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /web/promotions/{promotionId}/students:
+    parameters:
+      - $ref: "#/components/parameters/PromotionId"
+    get:
+      tags:
+        - Web
+      operationId: webListStudents
+      summary: "Displays the students page for a promotion (web interface)."
+      x-poja-roles:
+        - ADMIN
+        - TEACHER
+        - STUDENT
+      responses:
+        "200":
+          description: Students HTML page.
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /web/promotions/{promotionId}/graduates/export:
+    parameters:
+      - $ref: "#/components/parameters/PromotionId"
+    get:
+      tags:
+        - Web
+      operationId: webExportGraduates
+      summary: "Exports the graduate list as an XLSX file (web interface)."
+      x-poja-roles:
+        - ADMIN
+      parameters:
+        - name: track
+          in: query
+          schema:
+            $ref: "#/components/schemas/Track"
+      responses:
+        "302":
+          description: Redirects to the download URL.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
 components:
 
